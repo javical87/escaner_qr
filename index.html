@@ -1,97 +1,65 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificador de Asistentes QR</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; margin: 0; padding: 20px; background-color: #f0f2f5; }
-        #reader { width: 100%; max-width: 500px; margin: 0 auto; }
-        #result { margin-top: 20px; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 1.2em; }
-        .success { background-color: #d4edda; color: #155724; }
-        .error { background-color: #f8d7da; color: #721c24; }
-        .loading { background-color: #cce5ff; color: #004085; }
-    </style>
+    <title>Escáner de Asistentes</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="container">
+        <h1>Escáner de Asistencia</h1>
+        <div id="reader"></div>
+        <div id="result">
+            <p>Escanea un código QR para verificar a un asistente.</p>
+        </div>
+    </div>
 
-    <h1>Verificador de Asistentes</h1>
-    <p>Apunte la cámara al código QR para verificar.</p>
-
-    <div id="reader"></div>
-    <div id="result" class="loading">Iniciando escáner...</div>
-
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <script>
-        // URL de tu aplicación web de Google Apps Script
-        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbgWA7XgvaEHFfqcz3aSvyVqgCi-80LVxWeUgGWxREP3NghHuCP68PbCDjRQyzXB0qCw/exec";
-        
-        let html5QrcodeScanner;
-        let isScanning = false;
-
-        async function onScanSuccess(decodedText) {
-            if (isScanning) {
-                isScanning = false;
-                html5QrcodeScanner.clear(); // Limpia y detiene el escáner
-            }
-
+        document.addEventListener('DOMContentLoaded', () => {
             const resultDiv = document.getElementById('result');
-            resultDiv.className = 'loading';
-            resultDiv.innerText = 'Verificando ID...';
+            let asistentes = {};
 
-            try {
-                const response = await fetch(APP_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ id: decodedText }),
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+            // Cargar la base de datos desde el archivo asistentes.csv
+            fetch('asistentes.csv')
+                .then(response => response.text())
+                .then(data => {
+                    const lines = data.split('\n').slice(1); // Ignora la primera fila (encabezado)
+                    lines.forEach(line => {
+                        const parts = line.split(';');
+                        if (parts.length >= 4) {
+                            const [id, nombre, cedula] = parts;
+                            asistentes[id.trim()] = { nombre: nombre.trim(), cedula: cedula.trim() };
+                        }
+                    });
+                    console.log('Base de datos de asistentes cargada:', asistentes);
+                })
+                .catch(error => {
+                    console.error('Error al cargar la base de datos:', error);
+                    resultDiv.innerHTML = '<p class="result-error">Error al cargar la base de datos.</p>';
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
 
-                const data = await response.json();
+            // Función que se ejecuta al escanear un código QR
+            function onScanSuccess(decodedText) {
+                const asistente = asistentes[decodedText.trim()];
                 
-                if (data.success) {
-                    resultDiv.className = 'success';
-                    resultDiv.innerText = `✅ ${data.message}`;
+                if (asistente) {
+                    resultDiv.innerHTML = `<p class="result-success">✅ **¡Asistente verificado!**<br>Nombre: ${asistente.nombre}<br>Cédula: ${asistente.cedula}</p>`;
                 } else {
-                    resultDiv.className = 'error';
-                    resultDiv.innerText = `❌ ${data.message}`;
+                    resultDiv.innerHTML = `<p class="result-error">❌ **No se encontró el asistente.**</p>`;
                 }
-
-            } catch (error) {
-                console.error('Error de conexión o de respuesta:', error);
-                resultDiv.className = 'error';
-                resultDiv.innerText = `❌ Error: ${error.message}. Inténtelo de nuevo.`;
             }
 
-            // Reiniciar el escáner después de un breve retraso
-            setTimeout(() => {
-                resultDiv.innerText = 'Esperando escaneo...';
-                resultDiv.className = 'loading';
-                startScanner();
-            }, 4000);
-        }
+            // Función para manejar errores de escaneo
+            function onScanFailure(error) {
+                // No es necesario mostrar errores de forma constante
+                // console.warn(`Code scan error = ${error}`);
+            }
 
-        function onScanError(error) {
-            // Manejador de errores del escáner
-            // Puedes dejarlo vacío para no mostrar errores menores en la consola
-        }
-
-        function startScanner() {
-            if (isScanning) return;
-            
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-            html5QrcodeScanner.render(onScanSuccess, onScanError);
-            isScanning = true;
-        }
-
-        // Iniciar el escáner cuando la página esté completamente cargada
-        window.addEventListener('load', startScanner);
+            const html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false
+            );
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        });
     </script>
 </body>
 </html>
