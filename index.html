@@ -31,8 +31,8 @@
 
         // Función que se ejecuta cuando se escanea un QR
         async function onScanSuccess(decodedText, decodedResult) {
-            // El error estaba aquí, la versión que usas no tiene .stop().
-            // En su lugar, reiniciaremos el proceso por completo.
+            // Pausar el escáner al detectar un QR
+            html5QrcodeScanner.pause();
             
             const resultDiv = document.getElementById('result');
             resultDiv.className = 'loading';
@@ -67,16 +67,15 @@
                 resultDiv.innerText = `❌ Error: ${error.message}. Inténtelo de nuevo.`;
             }
 
+            // Reanudar el escáner después de un breve retraso
             setTimeout(() => {
                 resultDiv.innerText = 'Esperando escaneo...';
                 resultDiv.className = 'loading';
-                
-                // Reiniciar el escáner para un nuevo uso
-                html5QrcodeScanner.render(onScanSuccess);
-
+                html5QrcodeScanner.resume();
             }, 4000);
         }
 
+        // Iniciar el escáner cuando la página esté completamente cargada
         document.addEventListener('DOMContentLoaded', () => {
              html5QrcodeScanner = new Html5QrcodeScanner(
                 "reader", { fps: 10, qrbox: 250 });
