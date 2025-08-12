@@ -9,7 +9,7 @@
         <h1>Escáner de Asistencia</h1>
         <div id="reader"></div>
         <div id="result">
-            <p>Escanea un código QR para verificar a un asistente.</p>
+            <p>Escanea un código QR para registrar un asistente.</p>
         </div>
     </div>
 
@@ -17,42 +17,34 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const resultDiv = document.getElementById('result');
-            let asistentes = {};
-
-            // Cargar la base de datos desde el archivo asistentes.csv
-            fetch('asistentes.csv')
-                .then(response => response.text())
-                .then(data => {
-                    const lines = data.split('\n').slice(1); // Ignora la primera fila (encabezado)
-                    lines.forEach(line => {
-                        const parts = line.split(';');
-                        if (parts.length >= 4) {
-                            const [id, nombre, cedula] = parts;
-                            asistentes[id.trim()] = { nombre: nombre.trim(), cedula: cedula.trim() };
-                        }
-                    });
-                    console.log('Base de datos de asistentes cargada:', asistentes);
-                })
-                .catch(error => {
-                    console.error('Error al cargar la base de datos:', error);
-                    resultDiv.innerHTML = '<p class="result-error">Error al cargar la base de datos.</p>';
-                });
+            const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbyEJbhll0Ve0exD0NeeZ3ATzWYXbfN6EMO_HS0xJG0YpKJDijPXRPQCCqK5SY2wI2t3CA/exec'; // Pega la URL que copiaste
 
             // Función que se ejecuta al escanear un código QR
-            function onScanSuccess(decodedText) {
-                const asistente = asistentes[decodedText.trim()];
+            async function onScanSuccess(decodedText) {
+                resultDiv.innerHTML = `<p>Procesando...</p>`;
                 
-                if (asistente) {
-                    resultDiv.innerHTML = `<p class="result-success">✅ **¡Asistente verificado!**<br>Nombre: ${asistente.nombre}<br>Cédula: ${asistente.cedula}</p>`;
-                } else {
-                    resultDiv.innerHTML = `<p class="result-error">❌ **No se encontró el asistente.**</p>`;
+                try {
+                    const response = await fetch(appsScriptUrl, {
+                        method: 'POST',
+                        body: new URLSearchParams({ id: decodedText.trim() })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        resultDiv.innerHTML = `<p class="result-success">✅ **¡Asistente registrado!**<br>Nombre: ${data.nombre}<br>Cédula: ${data.cedula}<br>Hora: ${data.hora}</p>`;
+                    } else {
+                        resultDiv.innerHTML = `<p class="result-error">❌ **${data.message}**</p>`;
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = `<p class="result-error">Error de conexión con el servidor.</p>`;
+                    console.error('Error:', error);
                 }
             }
 
             // Función para manejar errores de escaneo
             function onScanFailure(error) {
-                // No es necesario mostrar errores de forma constante
-                // console.warn(`Code scan error = ${error}`);
+                // Se ejecuta si hay un problema al escanear, se puede ignorar para evitar mensajes constantes
             }
 
             const html5QrcodeScanner = new Html5QrcodeScanner(
