@@ -24,21 +24,24 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <script>
-        // !! CAMBIAR ESTA URL CON LA NUEVA DE TU APP SCRIPT !!
+        // URL de tu aplicación web de Google Apps Script
         const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbgWA7XgvaEHFfqcz3aSvyVqgCi-80LVxWeUgGWxREP3NghHuCP68PbCDjRQyzXB0qCw/exec";
         
         let html5QrcodeScanner;
+        let isScanning = false;
 
-        async function onScanSuccess(decodedText, decodedResult) {
-            html5QrcodeScanner.pause();
-            
+        async function onScanSuccess(decodedText) {
+            if (isScanning) {
+                isScanning = false;
+                html5QrcodeScanner.clear(); // Limpia y detiene el escáner
+            }
+
             const resultDiv = document.getElementById('result');
             resultDiv.className = 'loading';
             resultDiv.innerText = 'Verificando ID...';
 
             try {
-                // Se agrega ?callback=doPost para una comunicación más fiable con Apps Script
-                const response = await fetch(`${APP_SCRIPT_URL}?callback=doPost`, {
+                const response = await fetch(APP_SCRIPT_URL, {
                     method: 'POST',
                     body: JSON.stringify({ id: decodedText }),
                     headers: {
@@ -66,19 +69,29 @@
                 resultDiv.innerText = `❌ Error: ${error.message}. Inténtelo de nuevo.`;
             }
 
+            // Reiniciar el escáner después de un breve retraso
             setTimeout(() => {
                 resultDiv.innerText = 'Esperando escaneo...';
                 resultDiv.className = 'loading';
-                html5QrcodeScanner.resume();
+                startScanner();
             }, 4000);
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-             html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", { fps: 10, qrbox: 250 });
+        function onScanError(error) {
+            // Manejador de errores del escáner
+            // Puedes dejarlo vacío para no mostrar errores menores en la consola
+        }
 
-            html5QrcodeScanner.render(onScanSuccess);
-        });
+        function startScanner() {
+            if (isScanning) return;
+            
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+            html5QrcodeScanner.render(onScanSuccess, onScanError);
+            isScanning = true;
+        }
+
+        // Iniciar el escáner cuando la página esté completamente cargada
+        window.addEventListener('load', startScanner);
     </script>
 </body>
 </html>
