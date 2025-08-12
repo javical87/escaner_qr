@@ -29,7 +29,11 @@
 
         // Función que se ejecuta cuando se escanea un QR
         async function onScanSuccess(decodedText, decodedResult) {
-            html5QrcodeScanner.pause();
+            // Se agregó una verificación para asegurar que el escáner esté activo antes de pausarlo
+            if (html5QrcodeScanner.isScanning) {
+                html5QrcodeScanner.pause();
+            }
+            
             const resultDiv = document.getElementById('result');
             resultDiv.className = 'loading';
             resultDiv.innerText = 'Verificando ID...';
