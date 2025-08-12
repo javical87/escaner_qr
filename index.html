@@ -24,14 +24,12 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <script>
-        // URL de tu aplicación web de Google Apps Script
+        // !! CAMBIAR ESTA URL CON LA NUEVA DE TU APP SCRIPT !!
         const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbgWA7XgvaEHFfqcz3aSvyVqgCi-80LVxWeUgGWxREP3NghHuCP68PbCDjRQyzXB0qCw/exec";
-
+        
         let html5QrcodeScanner;
 
-        // Función que se ejecuta cuando se escanea un QR
         async function onScanSuccess(decodedText, decodedResult) {
-            // Pausar el escáner al detectar un QR
             html5QrcodeScanner.pause();
             
             const resultDiv = document.getElementById('result');
@@ -39,7 +37,8 @@
             resultDiv.innerText = 'Verificando ID...';
 
             try {
-                const response = await fetch(APP_SCRIPT_URL, {
+                // Se agrega ?callback=doPost para una comunicación más fiable con Apps Script
+                const response = await fetch(`${APP_SCRIPT_URL}?callback=doPost`, {
                     method: 'POST',
                     body: JSON.stringify({ id: decodedText }),
                     headers: {
@@ -67,7 +66,6 @@
                 resultDiv.innerText = `❌ Error: ${error.message}. Inténtelo de nuevo.`;
             }
 
-            // Reanudar el escáner después de un breve retraso
             setTimeout(() => {
                 resultDiv.innerText = 'Esperando escaneo...';
                 resultDiv.className = 'loading';
@@ -75,7 +73,6 @@
             }, 4000);
         }
 
-        // Iniciar el escáner cuando la página esté completamente cargada
         document.addEventListener('DOMContentLoaded', () => {
              html5QrcodeScanner = new Html5QrcodeScanner(
                 "reader", { fps: 10, qrbox: 250 });
